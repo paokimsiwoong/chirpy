@@ -29,21 +29,31 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("status code: %d\nerror message: %v\n", code, err)
 }
 
-// /api/metrics path handler : cfg에 저장된 fileserverHits 값을 표시
+// /admin/metrics path handler : cfg에 저장된 fileserverHits 값을 표시
 // apiConfig의 fileserverHits에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	// header 설정
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	// .Set은 기존값이 있으면 그걸 대체하지만 .Add는 기존값에 추가로 append
+	w.Header().Add("Content-Type", "text/html")
+	// html로 설정해야 html이 담긴 response body를 정상적으로 표시
 
 	// status code 는 200 ok 지정
 	w.WriteHeader(http.StatusOK)
 
 	// response body 설정
-	w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits.Load())))
+	formattedHtml := fmt.Sprintf(
+		`<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>`,
+		cfg.fileserverHits.Load(),
+	)
+
+	w.Write([]byte(formattedHtml))
 }
 
-// /api/reset path handler : cfg에 저장된 fileserverHits 값을 초기화
+// /admin/reset path handler : cfg에 저장된 fileserverHits 값을 초기화
 // apiConfig의 fileserverHits에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	// fileserverHits 값을 0으로 초기화
