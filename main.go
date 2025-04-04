@@ -30,6 +30,7 @@ func main() {
 	log.Printf("Serving files from %s on port: %s\n", rootPath, port)
 
 	err := server.ListenAndServe()
+	// @@@ when ListenAndServe() is called, the main function blocks until the server is shut down
 
 	// if err != nil {
 	// 	// fmt.Printf("error: %v", err)
