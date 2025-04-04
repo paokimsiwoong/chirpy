@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// /healthz path handler
+// /api/healthz path handler
 func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	// Header() returns the header map that will be sent by [ResponseWriter.WriteHeader]. The [Header] map also is the mechanism with which [Handler] implementations can set HTTP trailers.
 	// w.Header()는 http.Header 타입 반환
@@ -29,7 +29,7 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("status code: %d\nerror message: %v\n", code, err)
 }
 
-// /metrics path handler : cfg에 저장된 fileserverHits 값을 표시
+// /api/metrics path handler : cfg에 저장된 fileserverHits 값을 표시
 // apiConfig의 fileserverHits에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	// header 설정
@@ -43,7 +43,7 @@ func (cfg *apiConfig) handlerMetrics(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits.Load())))
 }
 
-// /reset path handler : cfg에 저장된 fileserverHits 값을 초기화
+// /api/reset path handler : cfg에 저장된 fileserverHits 값을 초기화
 // apiConfig의 fileserverHits에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	// fileserverHits 값을 0으로 초기화
