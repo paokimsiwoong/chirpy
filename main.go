@@ -22,9 +22,10 @@ func main() {
 
 	serveMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	serveMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
-	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다
 	serveMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+	serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 	// handler 함수들 등록
+	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다
 
 	// @@@ 해답처럼 server 정의 전에 Handle 메소드 실행하기
 	serveMux.Handle("/app/", cfg.middlewareMetricsInc(http.StripPrefix("/app/", http.FileServer(http.Dir(rootPath)))))

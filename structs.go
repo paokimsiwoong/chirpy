@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"sync/atomic"
 )
@@ -25,4 +26,27 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	// @@@@@@@@ HandlerFunc 타입의 ServeHTTP 메소드 : func (f http.HandlerFunc) ServeHTTP(w http.ResponseWriter, r *http.Request) { f(w,r) }
 	// @@@@@@@@ ===> 단순히 HandlerFunc 타입인 함수 자기 자신을 호출
 	// https://pkg.go.dev/net/http#HandlerFunc
+}
+
+type vcBody interface {
+	printBody()
+}
+
+type vcReqBody struct {
+	Body string `json:"body"`
+}
+type vcResBodyFail struct {
+	Error string `json:"error"`
+}
+
+func (f vcResBodyFail) printBody() {
+	fmt.Printf("%v\n", f.Error)
+}
+
+type vcResBodySuccess struct {
+	Valid bool `json:"valid"`
+}
+
+func (s vcResBodySuccess) printBody() {
+	fmt.Printf("%v\n", s.Valid)
 }

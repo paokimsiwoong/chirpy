@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -69,4 +71,58 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 
 	// response body 설정
 	w.Write([]byte("Hits reset"))
+}
+
+// /api/validate_chirp path handler : POST request를 받아 json body를 decoding하고 적절한 처리 결과를 json에 담아 response로 전송
+func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+
+	// request body의 json 데이터를 담을 구조체
+	reqBody := vcReqBody{}
+	// status code 담을 int
+	var code int
+	// resBodyFail, resBodySuccess 둘다 body interface를 구현
+	var resBody vcBody
+
+	// request body decoding
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		code = 500
+		errMessage := fmt.Sprintf("Error decoding resquest body json: %v", err)
+		resBody = vcResBodyFail{Error: errMessage}
+		// @@@ 해답처럼 log 사용하기
+		log.Println(errMessage)
+	} else {
+		// @@@ 길이 확인 부분을 else 부분에 넣지 않고 바깥에 두면 decoding err가 nil이 아닐 때도,
+		// @@@ reqBody.Body는 zero value로 len 사용가능하기때문에 길이 확인 부분이 실행된다
+		// @@@ ==> len(reqBody.Body)는 0 이기 때문에 code가 500에서 200으로 바뀌어 버린다
+
+		// 문자열 길이 확인 후 140 초과면 에러, 아니면 성공
+		if len(reqBody.Body) > 140 {
+			code = 400
+			resBody = vcResBodyFail{Error: "Chirp is too long"}
+		} else {
+			code = 200
+			resBody = vcResBodySuccess{Valid: true}
+		}
+	}
+
+	data, err := json.Marshal(resBody)
+	if err != nil {
+		code = 500
+		errMessage := fmt.Sprintf("Error marshalling response body json: %v", err)
+		resBody = vcResBodyFail{Error: errMessage}
+		// @@@ 해답처럼 log 사용하기
+		log.Println(errMessage)
+	}
+
+	// header 설정
+	w.Header().Add("Content-Type", "application/json")
+
+	// status code 설정
+	w.WriteHeader(code)
+	// @@@ int 숫자대신 해답처럼 http 패키지의 const
+	// http.StatusOK(200), http.StatusBadRequest(400), http.StatusInternalServerError(500)
+	// @@@ 사용해도 된다
+
+	// response body 쓰기
+	w.Write(data)
 }
