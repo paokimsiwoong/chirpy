@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
-	"strings"
 )
 
 // /api/healthz path handler
@@ -83,7 +81,9 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	// status code 담을 int
 	var code int
 	// resBodyFail, resBodySuccess 둘다 vcbody interface를 구현
-	var resBody vcBody
+	// var resBody vcBody
+	var resBody interface{}
+	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
 
 	// request body decoding
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
@@ -104,61 +104,35 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 		} else {
 			code = 200
 
-			// `[kK][eE][rR][fF][uU][fF][fF][lL][eE]`
-			// `[sS][hH][aA][rR][bB][eE][rR][tT](?!\!)`
-			// `[fF][oO][rR][nN][aA][xX]`
-			// \b는 단어. 나 "단어" 같은 케이스가 제외된다
-			// r, err := regexp.Compile("([kK][eE][rR][fF][uU][fF][fF][lL][eE]|[fF][oO][rR][nN][aA][xX]|[sS][hH][aA][rR][bB][eE][rR][tT](?!!))")
-			// @@@@ Go regex는 전방탐색(?=, ?!) 후방탐색(?<=, ?<!) 지원안함
-			r, err := regexp.Compile("([kK][eE][rR][fF][uU][fF][fF][lL][eE]|[fF][oO][rR][nN][aA][xX])")
-			if err != nil {
-				code = 500
-				errMessage := fmt.Sprintf("Error compiling reg exp: %v", err)
-				resBody = vcResBodyFail{Error: errMessage}
-				// @@@ 해답처럼 log 사용하기
-				log.Println(errMessage)
-			} else {
-				replaced := r.ReplaceAllString(reqBody.Body, "****")
-				splitBody := strings.Split(replaced, " ")
-				toJoin := make([]string, len(splitBody))
-				for _, word := range splitBody {
-					lowered := strings.ToLower(word)
-					if strings.Contains(lowered, "sharbert") && !strings.Contains(lowered, "!") {
-						toJoin = append(toJoin, strings.Replace(lowered, "sharbert", "****", 1))
-						continue
-					}
-					toJoin = append(toJoin, word)
-				}
-
-				cleaned := strings.Trim(strings.Join(toJoin, " "), " ")
-
-				resBody = vcResBodySuccess{CleanedBody: cleaned}
-			}
+			resBody = vcResBodySuccess{CleanedBody: censor(reqBody.Body)} // utils.go의 censor 함수로 비속어 처리
 		}
 	}
 
-	data, err := json.Marshal(resBody)
-	if err != nil {
-		code = 500
-		errMessage := fmt.Sprintf("Error marshalling response body json: %v", err)
-		// resBody = vcResBodyFail{Error: errMessage} marshal 에러 후 block이므로 새로이 marshalling이 필요한 struct 필요 없음
-		// @@@ 해답처럼 log 사용하기
-		log.Println(errMessage)
+	// data, err := json.Marshal(resBody)
+	// if err != nil {
+	// 	code = 500
+	// 	errMessage := fmt.Sprintf("Error marshalling response body json: %v", err)
+	// 	// resBody = vcResBodyFail{Error: errMessage} marshal 에러 후 block이므로 새로이 marshalling이 필요한 struct 필요 없음
+	// 	// @@@ 해답처럼 log 사용하기
+	// 	log.Println(errMessage)
 
-		w.WriteHeader(code)
-		return
-		// w.Write에 넣을 data가 없으므로 여기서 바로 return
-	}
+	// 	w.WriteHeader(code)
+	// 	return
+	// 	// w.Write에 넣을 data가 없으므로 여기서 바로 return
+	// }
 
-	// header 설정
-	w.Header().Add("Content-Type", "application/json")
+	// // header 설정
+	// w.Header().Add("Content-Type", "application/json")
 
-	// status code 설정
-	w.WriteHeader(code)
-	// @@@ int 숫자대신 해답처럼 http 패키지의 const
-	// http.StatusOK(200), http.StatusBadRequest(400), http.StatusInternalServerError(500)
-	// @@@ 사용해도 된다
+	// // status code 설정
+	// w.WriteHeader(code)
+	// // @@@ int 숫자대신 해답처럼 http 패키지의 const
+	// // http.StatusOK(200), http.StatusBadRequest(400), http.StatusInternalServerError(500)
+	// // @@@ 사용해도 된다
 
-	// response body 쓰기
-	w.Write(data)
+	// // response body 쓰기
+	// w.Write(data)
+
+	// @@@ 해답의 DRY
+	respondWithJSON(w, code, resBody)
 }
