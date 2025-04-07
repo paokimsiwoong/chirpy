@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 )
 
 // /api/healthz path handler
@@ -80,7 +82,7 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	reqBody := vcReqBody{}
 	// status code 담을 int
 	var code int
-	// resBodyFail, resBodySuccess 둘다 body interface를 구현
+	// resBodyFail, resBodySuccess 둘다 vcbody interface를 구현
 	var resBody vcBody
 
 	// request body decoding
@@ -101,7 +103,37 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 			resBody = vcResBodyFail{Error: "Chirp is too long"}
 		} else {
 			code = 200
-			resBody = vcResBodySuccess{Valid: true}
+
+			// `[kK][eE][rR][fF][uU][fF][fF][lL][eE]`
+			// `[sS][hH][aA][rR][bB][eE][rR][tT](?!\!)`
+			// `[fF][oO][rR][nN][aA][xX]`
+			// \b는 단어. 나 "단어" 같은 케이스가 제외된다
+			// r, err := regexp.Compile("([kK][eE][rR][fF][uU][fF][fF][lL][eE]|[fF][oO][rR][nN][aA][xX]|[sS][hH][aA][rR][bB][eE][rR][tT](?!!))")
+			// @@@@ Go regex는 전방탐색(?=, ?!) 후방탐색(?<=, ?<!) 지원안함
+			r, err := regexp.Compile("([kK][eE][rR][fF][uU][fF][fF][lL][eE]|[fF][oO][rR][nN][aA][xX])")
+			if err != nil {
+				code = 500
+				errMessage := fmt.Sprintf("Error compiling reg exp: %v", err)
+				resBody = vcResBodyFail{Error: errMessage}
+				// @@@ 해답처럼 log 사용하기
+				log.Println(errMessage)
+			} else {
+				replaced := r.ReplaceAllString(reqBody.Body, "****")
+				splitBody := strings.Split(replaced, " ")
+				toJoin := make([]string, len(splitBody))
+				for _, word := range splitBody {
+					lowered := strings.ToLower(word)
+					if strings.Contains(lowered, "sharbert") && !strings.Contains(lowered, "!") {
+						toJoin = append(toJoin, strings.Replace(lowered, "sharbert", "****", 1))
+						continue
+					}
+					toJoin = append(toJoin, word)
+				}
+
+				cleaned := strings.Trim(strings.Join(toJoin, " "), " ")
+
+				resBody = vcResBodySuccess{CleanedBody: cleaned}
+			}
 		}
 	}
 
@@ -109,9 +141,13 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		code = 500
 		errMessage := fmt.Sprintf("Error marshalling response body json: %v", err)
-		resBody = vcResBodyFail{Error: errMessage}
+		// resBody = vcResBodyFail{Error: errMessage} marshal 에러 후 block이므로 새로이 marshalling이 필요한 struct 필요 없음
 		// @@@ 해답처럼 log 사용하기
 		log.Println(errMessage)
+
+		w.WriteHeader(code)
+		return
+		// w.Write에 넣을 data가 없으므로 여기서 바로 return
 	}
 
 	// header 설정

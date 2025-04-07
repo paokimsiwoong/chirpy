@@ -44,9 +44,11 @@ func (f vcResBodyFail) printBody() {
 }
 
 type vcResBodySuccess struct {
-	Valid bool `json:"valid"`
+	// Valid bool `json:"valid"`
+	CleanedBody string `json:"cleaned_body"`
 }
 
 func (s vcResBodySuccess) printBody() {
-	fmt.Printf("%v\n", s.Valid)
+	// fmt.Printf("%v\n", s.Valid)
+	fmt.Printf("%v\n", s.CleanedBody)
 }
