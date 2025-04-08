@@ -183,3 +183,32 @@ func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) 
 
 	respondWithJSON(w, code, resBody)
 }
+
+// /api/chirps path GET handler : 모든 chirps 반환
+// apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
+func (cfg *apiConfig) handlerChirpsGET(w http.ResponseWriter, r *http.Request) {
+
+	chirps, err := cfg.ptrDB.GetChirps(r.Context())
+	// http.Request의 Context() method는 req의 context.Context를 반환
+	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error getting chirp list in DB", fmt.Errorf("error getting chirp list in DB: %w", err))
+		return
+	}
+
+	// json에 저장할 데이터들 구조체에 저장
+	var resBody []cResBodySuccess
+	// resBody := make([]cResBodySuccess, len(chirps)) 사용하면 쓰레기 json이 두개 앞에 추가됨??
+
+	for _, chirp := range chirps {
+		resBody = append(resBody, cResBodySuccess{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, resBody)
+}
