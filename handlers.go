@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/paokimsiwoong/chirpy/internal/database"
 )
 
@@ -208,6 +209,39 @@ func (cfg *apiConfig) handlerChirpsGET(w http.ResponseWriter, r *http.Request) {
 			Body:      chirp.Body,
 			UserID:    chirp.UserID,
 		})
+	}
+
+	respondWithJSON(w, http.StatusOK, resBody)
+}
+
+// /api/chirps/{chirpID} path GET handler : 특정 id chirp 반환
+func (cfg *apiConfig) handlerChirpsGETOne(w http.ResponseWriter, r *http.Request) {
+	// r.PathValue(path parameter 이름)로 chirpID 가져오고
+	// string 형태인 uuid를 uuid.Parse함수로 uuid.UUID 타입으로 변환
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error parsing string to uuid", fmt.Errorf("error parsing string to uuid: %w", err))
+		return
+	}
+
+	// db에서 해당 id로 chirp 가져오기
+	chirp, err := cfg.ptrDB.GetChirpByID(r.Context(), chirpID)
+	// http.Request의 Context() method는 req의 context.Context를 반환
+	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+	if err != nil {
+		// respondWithError(w, http.StatusInternalServerError, "Error getting a chirp in DB", fmt.Errorf("error getting a chirp in DB: %w", err))
+		respondWithError(w, http.StatusNotFound, "Error finding a chirp in DB", fmt.Errorf("error finding a chirp in DB: %w", err))
+		// code 404
+		return
+	}
+
+	// json에 저장할 데이터들 구조체에 저장
+	resBody := cResBodySuccess{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
 	}
 
 	respondWithJSON(w, http.StatusOK, resBody)
