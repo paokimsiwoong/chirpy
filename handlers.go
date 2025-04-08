@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
+
+	"github.com/paokimsiwoong/chirpy/internal/database"
 )
 
 // /api/healthz path handler
@@ -85,70 +87,6 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hits and db reset"))
 }
 
-// /api/validate_chirp path handler : POST request를 받아 json body를 decoding하고 적절한 처리 결과를 json에 담아 response로 전송
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
-
-	// request body의 json 데이터를 담을 구조체
-	reqBody := vcReqBody{}
-	// status code 담을 int
-	var code int
-	// resBodyFail, resBodySuccess 둘다 vcbody interface를 구현
-	// var resBody vcBody
-	var resBody interface{}
-	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
-
-	// request body decoding
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		code = 500
-		errMessage := fmt.Sprintf("Error decoding resquest body json: %v", err)
-		resBody = vcResBodyFail{Error: errMessage}
-		// @@@ 해답처럼 log 사용하기
-		log.Println(errMessage)
-	} else {
-		// @@@ 길이 확인 부분을 else 부분에 넣지 않고 바깥에 두면 decoding err가 nil이 아닐 때도,
-		// @@@ reqBody.Body는 zero value로 len 사용가능하기때문에 길이 확인 부분이 실행된다
-		// @@@ ==> len(reqBody.Body)는 0 이기 때문에 code가 500에서 200으로 바뀌어 버린다
-
-		// 문자열 길이 확인 후 140 초과면 에러, 아니면 성공
-		if len(reqBody.Body) > 140 {
-			code = 400
-			resBody = vcResBodyFail{Error: "Chirp is too long"}
-		} else {
-			code = 200
-
-			resBody = vcResBodySuccess{CleanedBody: censor(reqBody.Body)} // utils.go의 censor 함수로 비속어 처리
-		}
-	}
-
-	// data, err := json.Marshal(resBody)
-	// if err != nil {
-	// 	code = 500
-	// 	errMessage := fmt.Sprintf("Error marshalling response body json: %v", err)
-	// 	// resBody = vcResBodyFail{Error: errMessage} marshal 에러 후 block이므로 새로이 marshalling이 필요한 struct 필요 없음
-	// 	// @@@ 해답처럼 log 사용하기
-	// 	log.Println(errMessage)
-
-	// 	w.WriteHeader(code)
-	// 	return
-	// 	// w.Write에 넣을 data가 없으므로 여기서 바로 return
-	// }
-
-	// // header 설정
-	// w.Header().Add("Content-Type", "application/json")
-
-	// // status code 설정
-	// w.WriteHeader(code)
-	// // @@@ int 숫자대신 해답처럼 http 패키지의 const
-	// // http.StatusOK(200), http.StatusBadRequest(400), http.StatusInternalServerError(500)
-	// // @@@ 사용해도 된다
-
-	// // response body 쓰기
-	// w.Write(data)
-
-	// @@@ 해답의 DRY
-	respondWithJSON(w, code, resBody)
-}
-
 // /api/users path POST handler : 유저 생성 및 db 저장
 // apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerUsersPOST(w http.ResponseWriter, r *http.Request) {
@@ -183,6 +121,61 @@ func (cfg *apiConfig) handlerUsersPOST(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+	}
+
+	// HTTP 201 Created는 http.StatusCreated
+	code = http.StatusCreated
+
+	respondWithJSON(w, code, resBody)
+}
+
+// /api/chirps path POST handler : 새로운 chirp post 생성
+// apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
+func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) {
+	// request body의 json 데이터를 담을 구조체
+	reqBody := cReqBody{}
+	// status code 담을 int
+	var code int
+
+	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
+
+	// request body decoding
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		code = 500
+		respondWithError(w, code, "Error decoding resquest body json", fmt.Errorf("error decoding resquest body json: %w", err))
+		// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
+		return
+	}
+
+	// 문자열 길이 확인 후 140 초과면 에러, 아니면 성공
+	if len(reqBody.Body) > 140 {
+		code = 400
+		respondWithError(w, code, "Error posting chirp : Chirp is too long", errors.New("chirp is too long"))
+		return
+	}
+
+	cleaned := censor(reqBody.Body)
+	// 특정 단어들 검열
+
+	chirp, err := cfg.ptrDB.CreateChirp(r.Context(), database.CreateChirpParams{
+		Body:   cleaned,
+		UserID: reqBody.UserID,
+	})
+	// http.Request의 Context() method는 req의 context.Context를 반환
+	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+	if err != nil {
+		code = 500
+		respondWithError(w, code, "Error creating chirp in DB", fmt.Errorf("error creating chirp in DB: %w", err))
+		return
+	}
+
+	// json에 저장할 데이터들 구조체에 저장
+	resBody := cResBodySuccess{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
 	}
 
 	// HTTP 201 Created는 http.StatusCreated

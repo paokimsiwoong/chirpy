@@ -55,7 +55,9 @@ func main() {
 	serveMux.HandleFunc("GET /api/healthz", handlerReadiness)
 	serveMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	serveMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
-	serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	// serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	// POST /api/chirps에 흡수
+	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsPOST)
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
 	// handler 함수들 등록
 	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다

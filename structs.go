@@ -35,31 +35,6 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	// https://pkg.go.dev/net/http#HandlerFunc
 }
 
-// type vcBody interface {
-// 	printBody()
-// }
-
-type vcReqBody struct {
-	Body string `json:"body"`
-}
-type vcResBodyFail struct {
-	Error string `json:"error"`
-}
-
-// func (f vcResBodyFail) printBody() {
-// 	fmt.Printf("%v\n", f.Error)
-// }
-
-type vcResBodySuccess struct {
-	// Valid bool `json:"valid"`
-	CleanedBody string `json:"cleaned_body"`
-}
-
-// func (s vcResBodySuccess) printBody() {
-// 	// fmt.Printf("%v\n", s.Valid)
-// 	fmt.Printf("%v\n", s.CleanedBody)
-// }
-
 type uReqBody struct {
 	Email string `json:"email"`
 }
@@ -69,4 +44,17 @@ type uResBodySuccess struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+}
+
+type cReqBody struct {
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type cResBodySuccess struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
 }
