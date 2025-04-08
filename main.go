@@ -1,9 +1,15 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq" // _ "github.com/lib/pq" 는 postgres driver를 사용한다고 알리는 것. main.go 내부에서 직접 코드 작성할 때 쓰이지는 않음
+	"github.com/paokimsiwoong/chirpy/internal/database"
 )
 
 func main() {
@@ -11,8 +17,32 @@ func main() {
 	const rootPath = "."
 	const port = "8080"
 
+	// .env 파일 load해서 리눅스 환경변수에 추가
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file")
+	} // godotenv.Load(filenames ...string) 함수에 불러들일 파일들의 path들을 입력해도 된다. (입력하지 않으면 기본값 .env 파일 로드)
+
+	// Getenv 함수로 환경변수를 불러올 수 있음
+	dbURL := os.Getenv("DB_URL")
+
+	// @@@ 해답처럼 dbURL empty string 예외처리
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+
+	// 불러온 dbURL로 데이터베이스 연결
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Error connecting to db : %v", err)
+	}
+	// sqlc가 생성한 database 패키지 New함수 사용
+	dbQueries := database.New(db)
+	// sql.DB 구조체는 database.DBTX 인터페이스를 구현하므로 New 함수에 입력 가능
+	// dbQueries *database.Queries 는 db 필드에 DBTX를 저장하는 단순한 구조체
+
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{}, // @@@ 해답처럼 값 초기화 명시하기
+		ptrDB:          dbQueries,
 	}
 
 	// http.NewServeMux() 함수는 메모리에 새로 http.ServeMux를 할당하고 그 포인터를 반환
@@ -49,14 +79,15 @@ func main() {
 	// @@@ 해답처럼 서버가 하는 일 log
 	log.Printf("Serving files from %s on port: %s\n", rootPath, port)
 
-	err := server.ListenAndServe()
-	// @@@ when ListenAndServe() is called, the main function blocks until the server is shut down
+	if err := server.ListenAndServe(); err != nil {
+		// @@@ when ListenAndServe() is called, the main function blocks until the server is shut down
 
-	// if err != nil {
-	// 	// fmt.Printf("error: %v", err)
-	// }
-	// @@@ ListenAndServe 의 err는 항상 non nil
-	// @@@ (ListenAndServe always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the returned error is [ErrServerClosed].)
-	// @@@ 해답처럼 main에선 log.Fatal 쓰기
-	log.Fatal(err)
+		// if err != nil {
+		// 	// fmt.Printf("error: %v", err)
+		// }
+		// @@@ ListenAndServe 의 err는 항상 non nil
+		// @@@ (ListenAndServe always returns a non-nil error. After [Server.Shutdown] or [Server.Close], the returned error is [ErrServerClosed].)
+		// @@@ 해답처럼 main에선 log.Fatal 쓰기
+		log.Fatal(err)
+	}
 }

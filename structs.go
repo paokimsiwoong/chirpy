@@ -3,11 +3,14 @@ package main
 import (
 	"net/http"
 	"sync/atomic"
+
+	"github.com/paokimsiwoong/chirpy/internal/database"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	// standard-library type that allows us to safely increment and read an integer value across multiple goroutines (HTTP requests in this project)
+	ptrDB *database.Queries
 }
 
 // 이 wrapper method로 http.Handler를 감싸는 새로운 http.Handler 반환
