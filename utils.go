@@ -50,7 +50,8 @@ func censor(text string) string {
 // 	return cleaned
 // }
 
-// @@@ 해답의 DRY 코드1
+// @@@ 해답의 DRY 코드1 :
+// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
 func respondWithError(w http.ResponseWriter, code int, msg string, err error) {
 	if err != nil {
 		log.Println(err)

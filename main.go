@@ -24,6 +24,7 @@ func main() {
 
 	// Getenv 함수로 환경변수를 불러올 수 있음
 	dbURL := os.Getenv("DB_URL")
+	platform := os.Getenv("PLATFORM")
 
 	// @@@ 해답처럼 dbURL empty string 예외처리
 	if dbURL == "" {
@@ -43,6 +44,7 @@ func main() {
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{}, // @@@ 해답처럼 값 초기화 명시하기
 		ptrDB:          dbQueries,
+		platform:       platform,
 	}
 
 	// http.NewServeMux() 함수는 메모리에 새로 http.ServeMux를 할당하고 그 포인터를 반환
@@ -54,6 +56,7 @@ func main() {
 	serveMux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	serveMux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
+	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
 	// handler 함수들 등록
 	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다
 
