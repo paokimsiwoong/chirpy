@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/paokimsiwoong/chirpy/internal/auth"
 	"github.com/paokimsiwoong/chirpy/internal/database"
 )
 
@@ -88,57 +90,27 @@ func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hits and db reset"))
 }
 
-// /api/users path POST handler : 유저 생성 및 db 저장
-// apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
-func (cfg *apiConfig) handlerUsersPOST(w http.ResponseWriter, r *http.Request) {
-	// request body의 json 데이터를 담을 구조체
-	reqBody := uReqBody{}
-	// status code 담을 int
-	var code int
-
-	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
-
-	// request body decoding
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		code = 500
-		respondWithError(w, code, "Error decoding resquest body json", fmt.Errorf("error decoding resquest body json: %w", err))
-		// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
-		return
-	}
-
-	user, err := cfg.ptrDB.CreateUser(r.Context(), reqBody.Email)
-	// http.Request의 Context() method는 req의 context.Context를 반환
-	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
-	if err != nil {
-		code = 500
-		respondWithError(w, code, "Error creating user in DB", fmt.Errorf("error creating user in DB: %w", err))
-		// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
-		return
-	}
-
-	// json에 저장할 데이터들 구조체에 저장
-	resBody := uResBodySuccess{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-	}
-
-	// HTTP 201 Created는 http.StatusCreated
-	code = http.StatusCreated
-
-	respondWithJSON(w, code, resBody)
-}
-
 // /api/chirps path POST handler : 새로운 chirp post 생성
 // apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
 func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) {
+	// tokenString이 Authorization header에 저장되어 있는지 확인
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error parsing header", fmt.Errorf("error parsing header: %w", err))
+		// code 401
+	}
+
+	// JWT 검증
+	userID, err := auth.ValidateJWT(tokenString, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error invalid token", fmt.Errorf("error invalid token: %w", err))
+		// code 401
+	}
+
 	// request body의 json 데이터를 담을 구조체
 	reqBody := cReqBody{}
 	// status code 담을 int
 	var code int
-
-	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
 
 	// request body decoding
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
@@ -160,7 +132,7 @@ func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) 
 
 	chirp, err := cfg.ptrDB.CreateChirp(r.Context(), database.CreateChirpParams{
 		Body:   cleaned,
-		UserID: reqBody.UserID,
+		UserID: userID,
 	})
 	// http.Request의 Context() method는 req의 context.Context를 반환
 	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
@@ -245,4 +217,119 @@ func (cfg *apiConfig) handlerChirpsGETOne(w http.ResponseWriter, r *http.Request
 	}
 
 	respondWithJSON(w, http.StatusOK, resBody)
+}
+
+// /api/users path POST handler : 유저 생성 및 db 저장
+// apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
+func (cfg *apiConfig) handlerUsersPOST(w http.ResponseWriter, r *http.Request) {
+
+	// request body의 json 데이터를 담을 구조체
+	reqBody := uReqBody{}
+	// status code 담을 int
+	var code int
+
+	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
+
+	// request body decoding
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		code = 500
+		respondWithError(w, code, "Error decoding resquest body json", fmt.Errorf("error decoding resquest body json: %w", err))
+		// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
+		return
+	}
+
+	hashed, err := auth.HashPassword(reqBody.Password)
+	if err != nil {
+		code = http.StatusInternalServerError // 500
+		respondWithError(w, code, "Error hashing password", fmt.Errorf("error hashing password: %w", err))
+		return
+	}
+
+	user, err := cfg.ptrDB.CreateUser(r.Context(), database.CreateUserParams{
+		Email:          reqBody.Email,
+		HashedPassword: hashed,
+	})
+	// http.Request의 Context() method는 req의 context.Context를 반환
+	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+	if err != nil {
+		code = 500
+		respondWithError(w, code, "Error creating user in DB", fmt.Errorf("error creating user in DB: %w", err))
+		// respondWithError는 입력된 error를 log.Println으로 출력하고 입력된 msg를 json에 담아 response하는 함수
+		return
+	}
+
+	// json에 저장할 데이터들 구조체에 저장
+	resBody := uResBodySuccess{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+		// @@@ hash는 절대 response로 반환하면 안된다 => 보안문제
+	}
+
+	// HTTP 201 Created는 http.StatusCreated
+	code = http.StatusCreated
+
+	respondWithJSON(w, code, resBody)
+}
+
+// /api/login path PSO handler : 로그인 요청 처리
+func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
+	// request body의 json 데이터를 담을 구조체
+	reqBody := uReqBody{}
+
+	// @@@ 모든 타입은 empty interface를 구현하므로 임의 타입을 담을 container로 사용가능
+
+	// request body decoding
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error decoding resquest body json", fmt.Errorf("error decoding resquest body json: %w", err))
+		// code는 500
+		return
+	}
+
+	user, err := cfg.ptrDB.GetUserByEmail(r.Context(), reqBody.Email)
+	// http.Request의 Context() method는 req의 context.Context를 반환
+	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error incorrect email or password", fmt.Errorf("error incorrect email or password: %w", err)) // 4번째 인자 error는 response로 가지 않으므로 이메일 오류인지 비밀번호 오류인지 요청자가 알 수 없다.
+		// code는 401
+		return
+	}
+
+	if err := auth.CheckPasswordHash(user.HashedPassword, reqBody.Password); err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error incorrect email or password", fmt.Errorf("error incorrect email or password: %w", err)) // 4번째 인자 error는 response로 가지 않으므로 이메일 오류인지 비밀번호 오류인지 요청자가 알 수 없다.
+		// code는 401
+		return
+	}
+	// err == nil 이면 비밀번호 일치
+
+	// token 수명 설정값
+	var expiresIn time.Duration
+	if reqBody.ExpiresInSeconds > 3600 || reqBody.ExpiresInSeconds == 0 {
+		expiresIn = time.Hour
+	} else {
+		// expiresIn = time.Duration(reqBody.ExpiresInSeconds)
+		// @@@ 해답 참조 후 수정
+		expiresIn = time.Duration(reqBody.ExpiresInSeconds) * time.Second
+	}
+
+	tokenString, err := auth.MakeJWT(user.ID, cfg.tokenSecret, expiresIn)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error creating token", fmt.Errorf("error creating token: %w", err))
+		// code는 500
+		return
+	}
+
+	// json에 저장할 데이터들 구조체에 저장
+	resBody := uResBodySuccess{
+		ID:        user.ID,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+		Email:     user.Email,
+		Token:     tokenString,
+		// @@@ hashed password는 절대 response로 반환하면 안된다 => 보안문제
+	}
+
+	respondWithJSON(w, http.StatusOK, resBody)
+	// code는 200
 }

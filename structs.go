@@ -16,6 +16,8 @@ type apiConfig struct {
 	// db 쿼리함수 접근을 위한 포인터
 	platform string
 	// dev냐 일반유저냐에 따라 몇몇 페이지 제한 여부가 갈림
+	tokenSecret string
+	// JWT 생성에 사용할 시크릿 키
 }
 
 // 이 wrapper method로 http.Handler를 감싸는 새로운 http.Handler 반환
@@ -35,20 +37,10 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	// https://pkg.go.dev/net/http#HandlerFunc
 }
 
-type uReqBody struct {
-	Email string `json:"email"`
-}
-
-type uResBodySuccess struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-}
-
+// @@@ 여러개의 함수에서 사용되는 구조체들은 structs.go에 저장
 type cReqBody struct {
-	Body   string    `json:"body"`
-	UserID uuid.UUID `json:"user_id"`
+	Body string `json:"body"`
+	// UserID uuid.UUID `json:"user_id"` //@@@ auth.ValidateJWT가 토큰정보를 받아 uuid 반환하므로 삭제
 }
 
 type cResBodySuccess struct {
@@ -57,4 +49,19 @@ type cResBodySuccess struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Body      string    `json:"body"`
 	UserID    uuid.UUID `json:"user_id"`
+}
+
+type uReqBody struct {
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	ExpiresInSeconds int    `json:"expires_in_seconds"`
+}
+
+type uResBodySuccess struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	Token     string    `json:"token"`
+	// @@@ hashed password는 절대 response로 반환하면 안된다 => 보안문제
 }

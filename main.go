@@ -25,6 +25,7 @@ func main() {
 	// Getenv 함수로 환경변수를 불러올 수 있음
 	dbURL := os.Getenv("DB_URL")
 	platform := os.Getenv("PLATFORM")
+	tokenSecret := os.Getenv("TOKEN_SECRET")
 
 	// @@@ 해답처럼 dbURL empty string 예외처리
 	if dbURL == "" {
@@ -45,6 +46,7 @@ func main() {
 		fileserverHits: atomic.Int32{}, // @@@ 해답처럼 값 초기화 명시하기
 		ptrDB:          dbQueries,
 		platform:       platform,
+		tokenSecret:    tokenSecret,
 	}
 
 	// http.NewServeMux() 함수는 메모리에 새로 http.ServeMux를 할당하고 그 포인터를 반환
@@ -58,6 +60,7 @@ func main() {
 	// serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 	// POST /api/chirps에 흡수
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
+	serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsPOST)
 	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGET)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGETOne) // {path_parameter_name}으로 path parameter 설정가능 ==> http.Request.PathValue(path_parameter_name)으로 접근
