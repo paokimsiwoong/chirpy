@@ -60,6 +60,7 @@ func main() {
 	// serveMux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 	// POST /api/chirps에 흡수
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
+	serveMux.HandleFunc("PUT /api/users", cfg.handlerUsersPUT)
 	serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
 	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
