@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -129,4 +131,24 @@ func GetBearerToken(headers http.Header) (string, error) {
 	tokenString := strings.Trim(splitAuth[1], " ")
 
 	return tokenString, nil
+}
+
+// refresh token 생성 함수 (access 토큰인 JWT와 다름)
+func MakeRefreshToken() (string, error) {
+	// crypto/rand.Read함수는 입력한 []byte에 랜덤 값 채워주는 함수
+	randBytes := make([]byte, 32)
+	_, err := rand.Read(randBytes)
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	// go에서 slice도 함수에 passed by value이지만
+	// 함수 블록 바깥의 원본 슬라이스나 함수 안의 복사된 슬라이스나
+	// underlying array를 가리키는 주소들을 value들로 가지기 때문에 동일한 주소 값들을 가진다
+	// ==> 함수 안에서 복사된 슬라이스를 변경하면 주소를 타고 underlying array 값 변경
+	// ===> 함수 바깥의 원본 슬라이스도 그 값 변경을 관찰 가능
+	// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+	if err != nil {
+		return "", fmt.Errorf("error generating random data: %w", err)
+	}
+
+	return hex.EncodeToString(randBytes), nil
+	// hex.EncodeToString함수는 input을 hexadecimal encoding 한 후 반환
 }

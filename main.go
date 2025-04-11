@@ -61,6 +61,8 @@ func main() {
 	// POST /api/chirps에 흡수
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
 	serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
+	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
+	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsPOST)
 	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGET)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGETOne) // {path_parameter_name}으로 path parameter 설정가능 ==> http.Request.PathValue(path_parameter_name)으로 접근
