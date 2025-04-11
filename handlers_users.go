@@ -50,10 +50,11 @@ func (cfg *apiConfig) handlerUsersPOST(w http.ResponseWriter, r *http.Request) {
 
 	// json에 저장할 데이터들 구조체에 저장
 	resBody := uResBodySuccess{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 		// @@@ hash는 절대 response로 반환하면 안된다 => 보안문제
 	}
 
@@ -113,10 +114,11 @@ func (cfg *apiConfig) handlerUsersPUT(w http.ResponseWriter, r *http.Request) {
 
 	// json에 저장할 데이터들 구조체에 저장
 	resBody := uResBodySuccess{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
+		ID:          user.ID,
+		CreatedAt:   user.CreatedAt,
+		UpdatedAt:   user.UpdatedAt,
+		Email:       user.Email,
+		IsChirpyRed: user.IsChirpyRed,
 		// @@@ hash는 절대 response로 반환하면 안된다 => 보안문제
 	}
 

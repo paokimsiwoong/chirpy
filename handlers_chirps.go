@@ -165,6 +165,7 @@ func (cfg *apiConfig) handlerChirpsDELETEOne(w http.ResponseWriter, r *http.Requ
 	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Error parsing string to uuid", fmt.Errorf("error parsing string to uuid: %w", err))
+		// code 400
 		return
 	}
 

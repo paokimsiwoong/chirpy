@@ -87,6 +87,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        tokenString,
 		RefreshToken: refreshTokenString,
+		IsChirpyRed:  user.IsChirpyRed,
 		// @@@ hashed password는 절대 response로 반환하면 안된다 => 보안문제
 	}
 

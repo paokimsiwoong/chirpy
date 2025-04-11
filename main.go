@@ -70,6 +70,8 @@ func main() {
 	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGET)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGETOne) // {path_parameter_name}으로 path parameter 설정가능 ==> http.Request.PathValue(path_parameter_name)으로 접근
 	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.handlerChirpsDELETEOne)
+
+	serveMux.HandleFunc("POST /api/polka/webhooks", cfg.handlerPolkaWebhooks)
 	// handler 함수들 등록
 	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다
 
