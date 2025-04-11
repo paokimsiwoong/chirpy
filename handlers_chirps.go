@@ -141,3 +141,58 @@ func (cfg *apiConfig) handlerChirpsGETOne(w http.ResponseWriter, r *http.Request
 
 	respondWithJSON(w, http.StatusOK, resBody)
 }
+
+// /api/chirps/{chirpID} path DELETE handler : 특정 id chirp 삭제
+func (cfg *apiConfig) handlerChirpsDELETEOne(w http.ResponseWriter, r *http.Request) {
+	// jWT sting이 Authorization header에 저장되어 있는지 확인
+	tokenString, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error parsing header", fmt.Errorf("error parsing header: %w", err))
+		// code 401
+		return
+	}
+
+	// JWT 검증
+	userID, err := auth.ValidateJWT(tokenString, cfg.tokenSecret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error invalid token", fmt.Errorf("error invalid token: %w", err))
+		// code 401
+		return
+	}
+
+	// r.PathValue(path parameter 이름)로 chirpID 가져오고
+	// string 형태인 uuid를 uuid.Parse함수로 uuid.UUID 타입으로 변환
+	chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error parsing string to uuid", fmt.Errorf("error parsing string to uuid: %w", err))
+		return
+	}
+
+	// chirpID에 해당하는 chirp가 있는지 확인하고 가져오기
+	chirp, err := cfg.ptrDB.GetChirpByID(r.Context(), chirpID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Error finding a chirp in DB", fmt.Errorf("error finding a chirp in DB: %w", err))
+		// code 404
+		return
+	}
+
+	// chirp의 작성자와 지금 지우려는 유저가 동일 유저인지 확인
+	if chirp.UserID != userID {
+		respondWithError(w, http.StatusForbidden, "Error can't delete other user's chirp", errors.New("error can't delete other user's chirp"))
+		// code 403
+		return
+	}
+
+	// chirp db에서 삭제
+	if err := cfg.ptrDB.DeleteChirpByID(r.Context(), database.DeleteChirpByIDParams{
+		ID:     chirpID,
+		UserID: userID,
+	}); err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Error deleting chirp in DB", fmt.Errorf("error deleting chirp in DB: %w", err))
+		return
+	}
+
+	// 정상적으로 삭제가 완료되면 status code 설정 후 함수 종료
+	w.WriteHeader(http.StatusNoContent)
+	// code 204
+}

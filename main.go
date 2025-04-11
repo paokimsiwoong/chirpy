@@ -61,12 +61,15 @@ func main() {
 	// POST /api/chirps에 흡수
 	serveMux.HandleFunc("POST /api/users", cfg.handlerUsersPOST)
 	serveMux.HandleFunc("PUT /api/users", cfg.handlerUsersPUT)
+
 	serveMux.HandleFunc("POST /api/login", cfg.handlerLogin)
 	serveMux.HandleFunc("POST /api/refresh", cfg.handlerRefresh)
 	serveMux.HandleFunc("POST /api/revoke", cfg.handlerRevoke)
+
 	serveMux.HandleFunc("POST /api/chirps", cfg.handlerChirpsPOST)
 	serveMux.HandleFunc("GET /api/chirps", cfg.handlerChirpsGET)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", cfg.handlerChirpsGETOne) // {path_parameter_name}으로 path parameter 설정가능 ==> http.Request.PathValue(path_parameter_name)으로 접근
+	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", cfg.handlerChirpsDELETEOne)
 	// handler 함수들 등록
 	// pattern string의 앞부분에 HTTP method 이름을 명시해서 해당 path에 사용가능한 method을 제한할 수 있다
 
