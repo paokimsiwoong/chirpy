@@ -81,16 +81,37 @@ func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) 
 }
 
 // /api/chirps path GET handler : 모든 chirps 반환
-// apiConfig의 ptrDB에 접근해야 하므로 apiConfig의 method으로 정의
+// ? 쿼리에 "author_id" key가 있을 떄와 다를 때 행동이 다름
 func (cfg *apiConfig) handlerChirpsGET(w http.ResponseWriter, r *http.Request) {
+	var chirps []database.Chirp
+	var err error
 
-	chirps, err := cfg.ptrDB.GetChirps(r.Context())
-	// http.Request의 Context() method는 req의 context.Context를 반환
-	// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Error getting chirp list in DB", fmt.Errorf("error getting chirp list in DB: %w", err))
-		return
+	// query 확인하기
+	// @@@ query는 ?first=name&second=age와 같이 &로 여러개의 key, value pair가 포함될 수 있다
+	// @@@ ===> r.URL.Query().Has(key)와 r.URL.Query().Get(key) 활용해 key 값별로 존재 여부 확인 및 불러오기 가능
+	if r.URL.Query().Has("author_id") {
+		// .Get은 key값이 설정되지 않은 경우 "" 반환되지만 조건문에서 .Has로 key 설정 여부 확인 가능
+		userID, err := uuid.Parse(r.URL.Query().Get("author_id"))
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Error parsing string to uuid", fmt.Errorf("error parsing string to uuid: %w", err))
+			// code 400
+			return
+		}
+		chirps, err = cfg.ptrDB.GetChirpsByAuthorID(r.Context(), userID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Error getting chirp list by author id in DB", fmt.Errorf("error getting chirp list by author id in DB: %w", err))
+			return
+		}
+	} else {
+		chirps, err = cfg.ptrDB.GetChirps(r.Context())
+		// http.Request의 Context() method는 req의 context.Context를 반환
+		// ==> 만약 접속이 끊기거나 타임아웃이 되면 그 정보가 context로 전달되서 db 쿼리를 알아서 중단시켜준다
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Error getting chirp list in DB", fmt.Errorf("error getting chirp list in DB: %w", err))
+			return
+		}
 	}
+	// @@@ 해답은 user_id로 거르는 별도의 SQL 쿼리를 쓰지 않고 밑의 for문에서 userid 일치하는 chirp만 append하는 방식 사용
 
 	// json에 저장할 데이터들 구조체에 저장
 	var resBody []cResBodySuccess
