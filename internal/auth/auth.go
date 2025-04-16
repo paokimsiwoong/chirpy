@@ -152,3 +152,23 @@ func MakeRefreshToken() (string, error) {
 	return hex.EncodeToString(randBytes), nil
 	// hex.EncodeToString함수는 input을 hexadecimal encoding 한 후 반환
 }
+
+// http.Header에 저장되어 있는 polka webhook api 키를 반환하는 함수
+func GetAPIKey(headers http.Header) (string, error) {
+	// header에서 정보 불러오기
+	auth := headers.Get("Authorization")
+	// authorization 헤더 내용은 " ApiKey <THE_KEY_HERE>" 형태
+	if auth == "" {
+		return "", errors.New("can't find authorization header")
+		// @@@ 해답은 함수 바깥에서 var ErrNoAuthHeaderIncluded = errors.New("no auth header included in request") 정의한 후 여기서 사용
+	}
+
+	splitAuth := strings.Split(auth, " ")
+	if len(splitAuth) != 2 || splitAuth[0] != "ApiKey" {
+		return "", errors.New("invalid authorization header")
+	}
+
+	apiKey := strings.Trim(splitAuth[1], " ")
+
+	return apiKey, nil
+}

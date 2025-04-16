@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/paokimsiwoong/chirpy/internal/auth"
 )
 
 // /api/polka/webhooks path POST handler : polka webhooks 처리
@@ -17,6 +18,19 @@ func (cfg *apiConfig) handlerPolkaWebhooks(w http.ResponseWriter, r *http.Reques
 		Data  struct {
 			UserID string `json:"user_id"`
 		} `json:"data"`
+	}
+
+	apiKey, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Error parsing header", fmt.Errorf("error parsing header: %w", err))
+		// code 401
+		return
+	}
+
+	if apiKey != cfg.polkaKey {
+		respondWithError(w, http.StatusUnauthorized, "Error invalid api key", errors.New("error invalid api key"))
+		// code 401
+		return
 	}
 
 	reqBody := pReqBody{}

@@ -10,14 +10,16 @@ import (
 )
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
 	// standard-library type that allows us to safely increment and read an integer value across multiple goroutines (HTTP requests in this project)
-	ptrDB *database.Queries
+	fileserverHits atomic.Int32
 	// db 쿼리함수 접근을 위한 포인터
-	platform string
+	ptrDB *database.Queries
 	// dev냐 일반유저냐에 따라 몇몇 페이지 제한 여부가 갈림
-	tokenSecret string
+	platform string
 	// JWT 생성에 사용할 시크릿 키
+	tokenSecret string
+	// polka webhook 인증에 쓰이는 api 키
+	polkaKey string
 }
 
 // 이 wrapper method로 http.Handler를 감싸는 새로운 http.Handler 반환
