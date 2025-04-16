@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/paokimsiwoong/chirpy/internal/auth"
@@ -81,7 +82,7 @@ func (cfg *apiConfig) handlerChirpsPOST(w http.ResponseWriter, r *http.Request) 
 }
 
 // /api/chirps path GET handler : 모든 chirps 반환
-// ? 쿼리에 "author_id" key가 있을 떄와 다를 때 행동이 다름
+// ? 쿼리에 "author_id" 또는 "sort" key가 있을 때와 없을 때 행동이 다름
 func (cfg *apiConfig) handlerChirpsGET(w http.ResponseWriter, r *http.Request) {
 	var chirps []database.Chirp
 	var err error
@@ -126,6 +127,25 @@ func (cfg *apiConfig) handlerChirpsGET(w http.ResponseWriter, r *http.Request) {
 			UserID:    chirp.UserID,
 		})
 	}
+
+	// query 확인하기 2
+	// sort 키가 있으면 value "asc", "desc"에 따라 정렬하기(created_at 기준)
+	if r.URL.Query().Get("sort") == "desc" {
+		sort.Slice(resBody, func(i, j int) bool { return resBody[i].CreatedAt.After(resBody[j].CreatedAt) })
+		// 이미 resBody가 asc로 정렬되어 있기때문에 slices.Reverse(resBody)도 가능
+	}
+	// @@@ 해답 예시
+	// sortDirection := "asc"
+	// sortDirectionParam := r.URL.Query().Get("sort")
+	// if sortDirectionParam == "desc" {
+	// 	sortDirection = "desc"
+	// }
+	// sort.Slice(chirps, func(i, j int) bool {
+	// 	if sortDirection == "desc" {
+	// 		return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+	// 	}
+	// 	return chirps[i].CreatedAt.Before(chirps[j].CreatedAt)
+	// })
 
 	respondWithJSON(w, http.StatusOK, resBody)
 }
